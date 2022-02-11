@@ -21,6 +21,7 @@ public class Cache {
     static ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
     static Lock r = rwl.readLock();
     static Lock w = rwl.writeLock();
+    static volatile boolean update = false;
     // 获取一个key对应的value
     public static  final Object get(String key){
         r.lock();
@@ -61,4 +62,42 @@ public class Cache {
      * @param
      * @return
      */
+
+    /**
+     *  锁降级指的是写锁降级成为读锁。如果当前线程拥有写锁，然后将其释放，最后再获取读
+     * 锁，这种分段完成的过程不能称之为锁降级。锁降级是指把持住（当前拥有的）写锁，再获取到
+     * 读锁，随后释放（先前拥有的）写锁的过程。
+     * 接下来看一个锁降级的示例。因为数据不常变化，所以多个线程可以并发地进行数据处
+     * 理，当数据变更后，如果当前线程感知到数据变化，则进行数据的准备工作，同时其他处理线
+     * 程被阻塞，直到当前线程完成数据的准备工作，
+     *
+     * @author yuze
+     * @date 2022/2/11 16:40
+     * @param []
+     * @return void
+     */
+    public void processData() {
+        r.lock();
+        if (!update) {
+            // 必须先释放读锁
+            r.unlock();
+            // 锁降级从写锁获取到开始
+            w.lock();
+            try {
+                if (!update) {
+                    // 准备数据的流程（略）
+                    update = true;
+                }
+                r.lock();
+            } finally {
+                w.unlock();
+            }
+            // 锁降级完成，写锁降级为读锁
+        }
+        try {
+            // 使用数据的流程（略）
+        } finally {
+            r.unlock();
+        }
+    }
 }
