@@ -26,6 +26,7 @@ public class BoundedQueue<T> {
             while (count == items.length){
                 notFull.await();
             }
+            items[addIndex] = t;
             if(++addIndex == items.length){
                 addIndex = 0;
             }
